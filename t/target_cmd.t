@@ -311,7 +311,7 @@ my %props = (
     reworked_dir        => dir('r'),
     reworked_deploy_dir => dir('r/d'),
     extension           => 'ddl',
-    variables           => { a => 'a', b => 'b' },
+    variables           => { ay => 'first', bee => 'second' },
 );
 isa_ok $cmd = $CLASS->new({
     sqitch     => $sqitch,
@@ -386,7 +386,7 @@ is $@->message, __x(
     reworked_dir        => dir('fb/r'),
     reworked_deploy_dir => dir('fb/r/d'),
     extension           => 'fbsql',
-    variables           => { a => 'x', c => '12' },
+    variables           => { ay => 'x', ceee => 'third' },
 );
 isa_ok $cmd = $CLASS->new({
     sqitch     => $sqitch,
@@ -399,7 +399,7 @@ while (my ($k, $v) = each %props) {
         is $config->get(key => "target.withall.$k"), $v,
             qq{Target "withall" should have $k set};
     } else {
-        $v->{b} = 'b';
+        $v->{bee} = 'second';
         is_deeply $config->get_section(section => "target.withall.$k"), $v,
             qq{Target "withall" should have merged $k set};
     }
@@ -628,6 +628,7 @@ is_deeply +MockOutput->get_emit, [
     ['    ', '  Deploy:      ', 'deploy'],
     ['    ', '  Revert:      ', 'revert'],
     ['    ', '  Verify:      ', 'verify'],
+    ['    ', 'No Variables'],
 ], 'The "dev" target should have been shown';
 
 # Try a target with a non-default client.
@@ -649,6 +650,7 @@ is_deeply +MockOutput->get_emit, [
     ['    ', '  Deploy:      ', 'deploy'],
     ['    ', '  Revert:      ', 'revert'],
     ['    ', '  Verify:      ', 'verify'],
+    ['    ', 'No Variables'],
 ], 'The "with_cli" target should have been shown';
 
 # Try a target with a non-default registry.
@@ -670,6 +672,7 @@ is_deeply +MockOutput->get_emit, [
     ['    ', '  Deploy:      ', 'deploy'],
     ['    ', '  Revert:      ', 'revert'],
     ['    ', '  Verify:      ', 'verify'],
+    ['    ', 'No Variables'],
 ], 'The "withreg" target should have been shown';
 
 # Try a target with variables.
@@ -692,10 +695,10 @@ is_deeply +MockOutput->get_emit, [
     ['    ', '  Deploy:      ', dir qw(fb r d)],
     ['    ', '  Revert:      ', dir qw(fb r revert)],
     ['    ', '  Verify:      ', dir qw(fb r verify)],
-  ['    ', '  Variables:   '],
-  ['  a => x'],
-  ['  b => b'],
-  ['  c => 12'],
+    ['    ', 'Variables:'],
+    ['  ay:   x'],
+    ['  bee:  second'],
+    ['  ceee: third'],
 ], 'The "withall" target should have been shown with variables';
 
 # Try multiples.
@@ -717,6 +720,7 @@ is_deeply +MockOutput->get_emit, [
     ['    ', '  Deploy:      ', 'deploy'],
     ['    ', '  Revert:      ', 'revert'],
     ['    ', '  Verify:      ', 'verify'],
+    ['    ', 'No Variables'],
     ['* qa'],
     ['    ', 'URI:           ', 'db:pg://qa.example.com/qa_widgets'],
     ['    ', 'Registry:      ', 'meta'],
@@ -733,6 +737,7 @@ is_deeply +MockOutput->get_emit, [
     ['    ', '  Deploy:      ', 'deploy'],
     ['    ', '  Revert:      ', 'revert'],
     ['    ', '  Verify:      ', 'verify'],
+    ['    ', 'No Variables'],
     ['* withreg'],
     ['    ', 'URI:           ', 'db:pg:withreg'],
     ['    ', 'Registry:      ', 'meta'],
@@ -749,6 +754,7 @@ is_deeply +MockOutput->get_emit, [
     ['    ', '  Deploy:      ', 'deploy'],
     ['    ', '  Revert:      ', 'revert'],
     ['    ', '  Verify:      ', 'verify'],
+    ['    ', 'No Variables'],
 ], 'All three targets should have been shown';
 
 ##############################################################################

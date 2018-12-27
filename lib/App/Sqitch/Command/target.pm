@@ -249,17 +249,16 @@ sub show {
     my $config = $sqitch->config;
 
     my %label_for = (
-        uri      => __('URI'),
-        registry => __('Registry'),
-        client   => __('Client'),
+        uri        => __('URI'),
+        registry   => __('Registry'),
+        client     => __('Client'),
         top_dir    => __('Top Directory'),
         plan_file  => __('Plan File'),
         extension  => __('Extension'),
-        revert       => '  ' . __ 'Revert',
-        deploy       => '  ' . __ 'Deploy',
-        verify       => '  ' . __ 'Verify',
-        reworked     => '  ' . __ 'Reworked',
-        variables    => '  ' . __ 'Variables',
+        revert     => '  ' . __ 'Revert',
+        deploy     => '  ' . __ 'Deploy',
+        verify     => '  ' . __ 'Verify',
+        reworked   => '  ' . __ 'Reworked',
     );
 
     my $len = max map { length } values %label_for;
@@ -268,6 +267,8 @@ sub show {
     # Header labels.
     $label_for{script_dirs} = __('Script Directories') . ':';
     $label_for{reworked_dirs} = __('Reworked Script Directories') . ':';
+    $label_for{variables} = __('Variables') . ':';
+    $label_for{no_variables} = __('No Variables');
 
     require App::Sqitch::Target;
     for my $name (@names) {
@@ -293,8 +294,14 @@ sub show {
         $self->emit('    ', $label_for{verify}, $target->reworked_verify_dir);
         my $vars = $target->variables;
         if (%{ $vars }) {
+            my $len = max map { length } values %{ $vars };
+            $len--;
+            $_ .= ': ' . ' ' x ($len - length $_) for keys %{ $vars };
             $self->emit('    ', $label_for{variables});
-            $self->emit("  $_ => $vars->{$_}") for sort { lc $a cmp lc $b } keys %{ $vars };
+            $self->emit("  $_:" . (' ' x ($len - length $_)) . $vars->{$_})
+                for sort { lc $a cmp lc $b } keys %{ $vars };
+        } else {
+            $self->emit('    ', $label_for{no_variables});
         }
     }
 
