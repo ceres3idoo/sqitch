@@ -69,6 +69,7 @@ is_deeply [$init->options], [qw(
     extension=s
     top-dir=s
     dir|d=s%
+    set|s=s%
 )], 'Options should be correct';
 
 is_deeply $CLASS->configure({}, {}), { properties => {}},

@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use utf8;
-use Test::More tests => 330;
+use Test::More tests => 348;
 #use Test::More 'no_plan';
 use App::Sqitch;
 use Locale::TextDomain qw(App-Sqitch);
@@ -73,6 +73,7 @@ is_deeply [$CLASS->options], [qw(
     extension=s
     top-dir=s
     dir|d=s%
+    set|s=s%
 )], 'Options should be correct';
 
 # Check default property values.
@@ -84,7 +85,7 @@ is_deeply $CLASS->configure({ foo => 'bar'}, { verbose => 2 }),
     { verbose => 2, properties => {} },
     'configure() should ignore config file';
 
-ok my $conf = $CLASS->configure({}, {
+ok my $conf = $CLASS->configure($config, {
     top_dir             => 'top',
     plan_file           => 'my.plan',
     registry            => 'bats',
@@ -100,22 +101,30 @@ ok my $conf = $CLASS->configure({}, {
         reworked_revert => 'rrev',
         reworked_verify => 'rver',
     },
+    set => {
+        foo => 'bar',
+        prefix => 'x_',
+    }
 }), 'Get full config';
 
 is_deeply $conf->{properties}, {
-        top_dir             => 'top',
-        plan_file           => 'my.plan',
-        registry            => 'bats',
-        client              => 'cli',
-        extension           => 'ddl',
-        uri                 => URI->new('db:pg:foo'),
-        deploy_dir          => 'dep',
-        revert_dir          => 'rev',
-        verify_dir          => 'ver',
-        reworked_dir        => 'wrk',
-        reworked_deploy_dir => 'rdep',
-        reworked_revert_dir => 'rrev',
-        reworked_verify_dir => 'rver',
+    top_dir             => 'top',
+    plan_file           => 'my.plan',
+    registry            => 'bats',
+    client              => 'cli',
+    extension           => 'ddl',
+    uri                 => URI->new('db:pg:foo'),
+    deploy_dir          => 'dep',
+    revert_dir          => 'rev',
+    verify_dir          => 'ver',
+    reworked_dir        => 'wrk',
+    reworked_deploy_dir => 'rdep',
+    reworked_revert_dir => 'rrev',
+    reworked_verify_dir => 'rver',
+    variables => {
+        foo => 'bar',
+        prefix => 'x_',
+    }
 }, 'Should have properties';
 isa_ok $conf->{properties}{$_}, 'Path::Class::File', "$_ file attribute" for qw(
     plan_file
@@ -207,7 +216,9 @@ for my $key (qw(
     is $config->get(key => "target.test.$key"), undef,
         qq{Target "test" should have no $key set};
 }
-
+is_deeply $config->get_section(section => 'target.test.variables'), {},
+    qq{Target "test" should have no variables set}
+;
 # Try adding a target with a registry.
 isa_ok $cmd = $CLASS->new({
     sqitch     => $sqitch,
@@ -226,11 +237,14 @@ for my $key (qw(
     deploy_dir
     revert_dir
     verify_dir
-    extension)
-) {
+    extension
+)) {
     is $config->get(key => "target.withreg.$key"), undef,
         qq{Target "test" should have no $key set};
+
 }
+is_deeply $config->get_section(section => 'target.withreg.variables'), {},
+    qq{Target "withreg" should have no variables set};
 
 # Try a client.
 isa_ok $cmd = $CLASS->new({
@@ -250,16 +264,18 @@ for my $key (qw(
     deploy_dir
     revert_dir
     verify_dir
-    extension)
-) {
+    extension
+)) {
     is $config->get(key => "target.withcli.$key"), undef,
         qq{Target "withcli" should have no $key set};
 }
+is_deeply $config->get_section(section => 'target.withcli.variables'), {},
+        qq{Target "withcli" should have no variables set};
 
 # Try both.
 isa_ok $cmd = $CLASS->new({
     sqitch => $sqitch,
-    properties => { client => 'ack', registry => 'foo' },
+    properties => { client => 'ack', registry => 'foo', variables => { a => 'y' } },
 }), $CLASS, 'Target with client and registry';
 ok $cmd->add('withboth', 'db:pg:withboth'), 'Add target "withboth"';
 $config->load;
@@ -275,11 +291,13 @@ for my $key (qw(
     deploy_dir
     revert_dir
     verify_dir
-    extension)
-) {
+    extension
+)) {
     is $config->get(key => "target.withboth.$key"), undef,
         qq{Target "withboth" should have no $key set};
 }
+is_deeply $config->get_section(section => 'target.withboth.variables'), {a => 'y'},
+        qq{Target "withboth" should have variables set};
 
 # Try all the properties.
 my %props = (
@@ -293,6 +311,7 @@ my %props = (
     reworked_dir        => dir('r'),
     reworked_deploy_dir => dir('r/d'),
     extension           => 'ddl',
+    variables           => { a => 'a', b => 'b' },
 );
 isa_ok $cmd = $CLASS->new({
     sqitch     => $sqitch,
@@ -307,8 +326,13 @@ $config->load;
 is $config->get(key => "target.withall.uri"), 'db:pg:withall',
         qq{Target "withall" should have uri set};
 while (my ($k, $v) = each %props) {
-    is $config->get(key => "target.withall.$k"), $v,
-        qq{Target "withall" should have $k set};
+    if ($k ne 'variables') {
+        is $config->get(key => "target.withall.$k"), $v,
+            qq{Target "withall" should have $k set};
+    } else {
+        is_deeply $config->get_section(section => "target.withall.$k"), $v,
+            qq{Target "withall" should have $k set};
+    }
 }
 
 ##############################################################################
@@ -362,6 +386,7 @@ is $@->message, __x(
     reworked_dir        => dir('fb/r'),
     reworked_deploy_dir => dir('fb/r/d'),
     extension           => 'fbsql',
+    variables           => { a => 'x', c => '12' },
 );
 isa_ok $cmd = $CLASS->new({
     sqitch     => $sqitch,
@@ -370,8 +395,14 @@ isa_ok $cmd = $CLASS->new({
 ok $cmd->alter('withall'), 'Alter target "withall"';
 $config->load;
 while (my ($k, $v) = each %props) {
-    is $config->get(key => "target.withall.$k"), $v,
-        qq{Target "withall" should have $k set};
+    if ($k ne 'variables') {
+        is $config->get(key => "target.withall.$k"), $v,
+            qq{Target "withall" should have $k set};
+    } else {
+        $v->{b} = 'b';
+        is_deeply $config->get_section(section => "target.withall.$k"), $v,
+            qq{Target "withall" should have merged $k set};
+    }
 }
 
 # Try changing the top directory.
@@ -427,7 +458,7 @@ is $config->get(key => 'target.withboth.uri'), 'db:postgres:stuff',
 ##############################################################################
 # Test other set_* methods
 for my $key (keys %props) {
-    next if $key =~ /^reworked/;
+    next if $key =~ /^(?:reworked|variables)/;
     my $meth = "set_$key";
     MISSINGARGS: {
         # Test handling of no name.
@@ -492,8 +523,14 @@ ok $cmd->rename('withboth', 'àlafois'), 'Rename';
 $config->load;
 ok $config->get(key => "target.àlafois.uri"),
     qq{Target "àlafois" should now be present};
+is $config->get(key => "target.àlafois.variables.a"), 'y',
+    qq{Target "àlafois" variables should now be present};
 is $config->get(key => "target.withboth.uri"), undef,
     qq{Target "withboth" should no longer be present};
+is $config->get(key => "target.withboth.variables.a"), undef,
+    qq{Target "withboth" variables should be gone};
+is_deeply $config->get_section(section => "target.àlafois.variables"), { a => 'y' },
+    qq{Target "àlafois" should have variables};
 
 # Make sure we die on dependencies.
 $config->group_set( $config->local_file, [
@@ -510,6 +547,16 @@ is $@->message, __x(
     target => 'prod',
     engines => 'core.target, engine.firebird.target',
 ), 'Dependency target error message should be correct';
+
+# Should get no error removing a target with no variables.
+ok $cmd->rename('test', 'funky'), 'Rename "test"';
+$config->load;
+ok $config->get(key => "target.funky.uri"),
+    qq{Target "funky" should now be present};
+is $config->get(key => "target.test.uri"), undef,
+    qq{Target "test" should no longer be present};
+is_deeply $config->get_section(section => "target.funky.variables"), {},
+    qq{Target "funcky" should have no variables};
 
 ##############################################################################
 # Test remove.
@@ -537,6 +584,8 @@ ok $cmd->remove('àlafois'), 'Remove';
 $config->load;
 is $config->get(key => "target.àlafois.uri"), undef,
     qq{Target "àlafois" should now be gone};
+is_deeply $config->get_section(section => "target.àlafois.variables"), {},
+    qq{Target "àlafois" variables should be gone, too};
 
 throws_ok { $cmd->remove('prod' ) } 'App::Sqitch::X',
     'Should get error removing a target with dependencies';
@@ -547,11 +596,17 @@ is $@->message, __x(
     engines => 'core.target, engine.firebird.target',
 ), 'Dependency target error message should be correct';
 
+# Remove one without variables, too.
+ok $cmd->remove('funky'), 'Remove "funky"';
+$config->load;
+is $config->get(key => "target.funky.uri"), undef,
+    qq{Target "funky" should now be gone};
+
 ##############################################################################
 # Test show.
 ok $cmd->show, 'Run show()';
 is_deeply +MockOutput->get_emit, [
-    ['dev'], ['prod'], ['qa'], ['test'], ['withall'], ['withcli'], ['withreg']
+    ['dev'], ['prod'], ['qa'], ['withall'], ['withcli'], ['withreg']
 ], 'Show with no names should emit the list of targets';
 
 # Try one target.
@@ -615,7 +670,33 @@ is_deeply +MockOutput->get_emit, [
     ['    ', '  Deploy:      ', 'deploy'],
     ['    ', '  Revert:      ', 'revert'],
     ['    ', '  Verify:      ', 'verify'],
-], 'The "with_reg" target should have been shown';
+], 'The "withreg" target should have been shown';
+
+# Try a target with variables.
+ok $cmd->show('withall'), 'Show withall';
+#use Data::Dump; ddx +MockOutput->get_emit;
+is_deeply +MockOutput->get_emit, [
+    ['* withall'],
+    ['    ', 'URI:           ', 'db:firebird:bar'],
+    ['    ', 'Registry:      ', 'migrations'],
+    ['    ', 'Client:        ', 'argh'],
+    ['    ', 'Top Directory: ', 'big'],
+    ['    ', 'Plan File:     ', 'fb.plan'],
+    ['    ', 'Extension:     ', 'fbsql'],
+    ['    ', 'Script Directories:'],
+    ['    ', '  Deploy:      ', dir qw(fb dep)],
+    ['    ', '  Revert:      ', dir qw(fb rev)],
+    ['    ', '  Verify:      ', dir qw(fb ver)],
+    ['    ', 'Reworked Script Directories:'],
+    ['    ', '  Reworked:    ', dir qw(fb r)],
+    ['    ', '  Deploy:      ', dir qw(fb r d)],
+    ['    ', '  Revert:      ', dir qw(fb r revert)],
+    ['    ', '  Verify:      ', dir qw(fb r verify)],
+  ['    ', '  Variables:   '],
+  ['  a => x'],
+  ['  b => b'],
+  ['  c => 12'],
+], 'The "withall" target should have been shown with variables';
 
 # Try multiples.
 ok $cmd->show(qw(dev qa withreg)), 'Show three targets';
