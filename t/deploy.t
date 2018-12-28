@@ -5,6 +5,7 @@ use warnings;
 use 5.010;
 use Test::More;
 use App::Sqitch;
+use App::Sqitch::Target;
 use Path::Class qw(dir file);
 use Test::MockModule;
 use Test::Exception;
@@ -30,6 +31,7 @@ can_ok $CLASS, qw(
     log_only
     execute
     variables
+    _collect_vars
 );
 
 is_deeply [$CLASS->options], [qw(
@@ -70,50 +72,30 @@ is_deeply $CLASS->configure($config, {
     variables => { foo => 'bar' },
 }, 'Should have mode, verify, set, and log-only options';
 
-CONFIG: {
-    my $mock_config = Test::MockModule->new(ref $config);
-    my %config_vals;
-    $mock_config->mock(get => sub {
-        my ($self, %p) = @_;
-        return $config_vals{ $p{key} };
-    });
-    $mock_config->mock(get_section => sub {
-        my ($self, %p) = @_;
-        return $config_vals{ $p{section} };
-    });
-    %config_vals = (
-        'deploy.mode'      => 'change',
-        'deploy.verify'    => 1,
-        'deploy.variables' => { foo => 'bar', hi => 21 },
-    );
+my $mock_config = Test::MockModule->new(ref $config);
+my %config_vals;
+$mock_config->mock(get => sub {
+    my ($self, %p) = @_;
+    return $config_vals{ $p{key} };
+});
+$mock_config->mock(get_section => sub {
+    my ($self, %p) = @_;
+    return $config_vals{ $p{section} } || {};
+});
+%config_vals = (
+    'deploy.mode'      => 'change',
+    'deploy.verify'    => 1,
+    'deploy.variables' => { foo => 'bar', hi => 21 },
+);
 
-    is_deeply $CLASS->configure($config, {}), {
-        mode     => 'change',
-        verify   => 1,
-        log_only => 0,
-    }, 'Should have mode and verify configuration';
-
-    # Try merging.
-    is_deeply $CLASS->configure($config, {
-        to_change => 'whu',
-        mode      => 'tag',
-        verify    => 0,
-        set       => { foo => 'yo', yo => 'stellar' },
-    }), {
-        to_change => 'whu',
-        mode      => 'tag',
-        verify    => 0,
-        log_only  => 0,
-        variables => { foo => 'yo', yo => 'stellar', hi => 21 },
-    }, 'Should have merged variables';
-
-    isa_ok my $deploy = $CLASS->new(sqitch => $sqitch), $CLASS;
-    is_deeply $deploy->variables, { foo => 'bar', hi => 21 },
-        'Should pick up variables from configuration';
-}
+is_deeply $CLASS->configure($config, {}), {
+    mode     => 'change',
+    verify   => 1,
+    log_only => 0,
+}, 'Should have mode and verify configuration';
 
 ##############################################################################
-# Test accessors.
+# Test construction.
 isa_ok my $deploy = $CLASS->new(
     sqitch   => $sqitch,
     target => 'foo',
@@ -122,14 +104,76 @@ is $deploy->target, 'foo', 'Should have target "foo"';
 
 isa_ok $deploy = $CLASS->new(sqitch => $sqitch), $CLASS;
 is $deploy->target, undef, 'Should have undef default target';
-
 is $deploy->to_change, undef, 'to_change should be undef';
 is $deploy->mode, 'all', 'mode should be "all"';
 
+##############################################################################
+# Test _collect_vars.
+%config_vals = ();
+my $target = App::Sqitch::Target->new(sqitch => $sqitch);
+is_deeply { $deploy->_collect_vars($target) }, {}, 'Should collect no variables';
+
+# Add core variables.
+$config_vals{'core.variables'} = { prefix => 'widget', priv => 'SELECT' };
+$target = App::Sqitch::Target->new(sqitch => $sqitch);
+is_deeply { $deploy->_collect_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'SELECT',
+}, 'Should collect core vars';
+
+# Add deploy variables.
+$config_vals{'deploy.variables'} = { dance => 'salsa', priv => 'UPDATE' };
+$target = App::Sqitch::Target->new(sqitch => $sqitch);
+is_deeply { $deploy->_collect_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UPDATE',
+    dance  => 'salsa',
+}, 'Should override core vars with deploy vars';
+
+# Add engine variables.
+$config_vals{'engine.pg.variables'} = { dance => 'disco', lunch => 'pizza' };
+my $uri = URI::db->new('db:pg:');
+$target = App::Sqitch::Target->new(sqitch => $sqitch, uri => $uri);
+is_deeply { $deploy->_collect_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UPDATE',
+    dance  => 'disco',
+    lunch  => 'pizza',
+}, 'Should override deploy vars with engine vars';
+
+# Add target variables.
+$config_vals{'target.foo.variables'} = { lunch => 'burrito', drink => 'whiskey' };
+$target = App::Sqitch::Target->new(sqitch => $sqitch, name => 'foo', uri => $uri);
+is_deeply { $deploy->_collect_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UPDATE',
+    dance  => 'disco',
+    lunch  => 'burrito',
+    drink  => 'whiskey',
+}, 'Should override engine vars with target vars';
+
+# Add --set variables.
+$deploy = $CLASS->new(
+    sqitch => $sqitch,
+    variables => { drink => 'scotch', status => 'winning'},
+);
+$target = App::Sqitch::Target->new(sqitch => $sqitch, name => 'foo', uri => $uri);
+is_deeply { $deploy->_collect_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UPDATE',
+    dance  => 'disco',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'winning',
+}, 'Should override target vars with --set variables';
+
+%config_vals = ();
+
+##############################################################################
+# Test execution.
 # Mock parse_args() so that we can grab the target it returns.
 my $mock_cmd = Test::MockModule->new($CLASS);
 my $parser;
-my $target;
 $mock_cmd->mock(parse_args => sub {
     my @ret = $parser->(@_);
     $target = $ret[0][0];
