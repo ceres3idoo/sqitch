@@ -44,13 +44,7 @@ has variables => (
     is       => 'ro',
     isa      => HashRef,
     lazy     => 1,
-    default  => sub {
-        my $cfg = shift->sqitch->config;
-        return {
-            %{ $cfg->get_section( section => 'deploy.variables' ) },
-            %{ $cfg->get_section( section => 'revert.variables' ) },
-        };
-    },
+    default  => sub { {} },
 );
 
 sub options {
@@ -83,12 +77,7 @@ sub configure {
     }
 
     if ( my $vars = $opt->{set} ) {
-        # Merge with config.
-        $params{variables} = {
-            %{ $config->get_section( section => 'deploy.variables' ) },
-            %{ $config->get_section( section => 'revert.variables' ) },
-            %{ $vars },
-        };
+        $params{variables} = $vars
     }
 
     $params{no_prompt} = delete $opt->{y} // $config->get(
@@ -102,6 +91,18 @@ sub configure {
     ) // 1;
 
     return \%params;
+}
+
+sub _collect_vars {
+    my ($self, $target) = @_;
+    my $cfg = $self->sqitch->config;
+    return (
+        %{ $cfg->get_section(section => 'core.variables') },
+        %{ $cfg->get_section(section => 'deploy.variables') },
+        %{ $cfg->get_section(section => 'revert.variables') },
+        %{ $target->variables }, # includes engine
+        %{ $self->variables },   # --set
+    );
 }
 
 sub execute {
@@ -130,7 +131,7 @@ sub execute {
     $engine->no_prompt( $self->no_prompt );
     $engine->prompt_accept( $self->prompt_accept );
     $engine->log_only( $self->log_only );
-    if (my %v = %{ $self->variables }) { $engine->set_variables(%v) }
+    $engine->set_variables( $self->_collect_vars($target) );
     $engine->revert( $change );
     return $self;
 }

@@ -53,6 +53,7 @@ my $sqitch = App::Sqitch->new(
 );
 my $config = $sqitch->config;
 
+##############################################################################
 # Test configure().
 is_deeply $CLASS->configure($config, {}), {
     mode     => 'all',
@@ -155,7 +156,7 @@ is_deeply { $deploy->_collect_vars($target) }, {
 # Add --set variables.
 $deploy = $CLASS->new(
     sqitch => $sqitch,
-    variables => { drink => 'scotch', status => 'winning'},
+    variables => { drink => 'scotch', status => 'winning' },
 );
 $target = App::Sqitch::Target->new(sqitch => $sqitch, name => 'foo', uri => $uri);
 is_deeply { $deploy->_collect_vars($target) }, {
