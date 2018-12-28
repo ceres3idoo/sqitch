@@ -9,6 +9,7 @@ use Path::Class qw(dir file);
 use Test::Exception;
 use Test::MockModule;
 use Locale::TextDomain qw(App-Sqitch);
+use List::Util qw(first);
 use lib 't/lib';
 use MockOutput;
 
@@ -450,7 +451,6 @@ CONFIG: {
         'core.reworked_revert_dir' => 'rrev',
         'core.reworked_verify_dir' => 'rver',
         'core.extension'           => 'ddl',
-        'core.variables'           =>  { 'x' => 'ex',  y => 'why' },
     );
     my $target = $CLASS->new(
         sqitch => $sqitch,
@@ -481,8 +481,7 @@ CONFIG: {
     is $target->reworked_verify_dir, 'rver', 'Reworked verify dir should be "rver"';
     isa_ok $target->reworked_verify_dir, 'Path::Class::Dir', 'Reworked verify dir';
     is $target->extension, 'ddl', 'Extension should be "ddl"';
-    is_deeply $target->variables, {x => 'ex', y => 'why'},
-        'Variables should be read from core.variables';
+    is_deeply $target->variables, {}, 'Should have no variables';
 
     # Add engine config.
     $config{'engine.pg.registry'}           = 'yoreg';
@@ -497,7 +496,7 @@ CONFIG: {
     $config{'engine.pg.reworked_revert_dir'} = 'pgrrev';
     $config{'engine.pg.reworked_verify_dir'} = 'pgrver';
     $config{'engine.pg.extension'}           = 'pgddl';
-    $config{'engine.pg.variables'}           = { z => 'zee' },
+    $config{'engine.pg.variables'}           = { x => 'ex', y => 'why', z => 'zee' },
     $target = $CLASS->new(
         sqitch => $sqitch,
         name   => 'foo',
@@ -528,7 +527,7 @@ CONFIG: {
     isa_ok $target->reworked_verify_dir, 'Path::Class::Dir', 'Reworked verify dir';
     is $target->extension, 'pgddl', 'Extension should be "pgddl"';
     is_deeply $target->variables, {x => 'ex', y => 'why', z => 'zee'},
-        'Variables should be read from core. and engine.variables';
+        'Variables should be read from engine.variables';
 
     # Add target config.
     $config{'target.foo.registry'}            = 'fooreg';
@@ -543,7 +542,7 @@ CONFIG: {
     $config{'target.foo.reworked_revert_dir'} = 'foorevr';
     $config{'target.foo.reworked_verify_dir'} = 'fooverr';
     $config{'target.foo.extension'}           = 'fooddl';
-    $config{'engine.pg.variables'}           = { z => 'zie',  a => 'ay' },
+    $config{'target.foo.variables'}           = { z => 'zie',  a => 'ay' },
     $target = $CLASS->new(
         sqitch => $sqitch,
         name   => 'foo',
@@ -574,7 +573,7 @@ CONFIG: {
     isa_ok $target->reworked_verify_dir, 'Path::Class::Dir', 'Reworked verify dir';
     is $target->extension, 'fooddl', 'Extension should be "fooddl"';
     is_deeply $target->variables, {x => 'ex', y => 'why', z => 'zie', a => 'ay'},
-        'Variables should be read from core., engine., and target.variables';
+        'Variables should be read from engine., and target.variables';
 
     # Add command-line options.
     $opts->{registry}            = 'optreg';
@@ -644,8 +643,7 @@ ALL: {
         'Load all targets with core target config';
     is @targets, 1, 'Should again have one target';
     is $targets[0]->name, 'db:pg:whatever', 'It should be the named target';
-    is_deeply $targets[0]->variables, {prefix => 'foo_'},
-        'It should have variables';
+    is_deeply $targets[0]->variables, {}, 'It should have no variables';
 
     # Try it with both engine and target defined.
     $sqitch->config->load_file(file 't', 'core.conf');
@@ -653,6 +651,7 @@ ALL: {
         'Load all targets with core engine and target config';
     is @targets, 1, 'Should still have one target';
     is $targets[0]->name, 'db:pg:whatever', 'It should again be the named target';
+    is_deeply $targets[0]->variables, {}, 'It should have no variables';
 
     # Great, now let's load one with some engines in it.
     $ENV{SQITCH_CONFIG} = file qw(t user.conf);
@@ -665,6 +664,9 @@ ALL: {
         'db:pg://postgres@localhost/thingies',
         'db:sqlite:my.db',
     ], 'Should have all the engine targets';
+    my $mysql = first { $_->name eq 'db:mysql:' } @targets;
+    is_deeply $mysql->variables, {prefix => 'foo_'},
+        'MySQL target should have engine variables';
 
     # Load one with targets.
     $ENV{SQITCH_CONFIG} = file qw(t target.conf);
