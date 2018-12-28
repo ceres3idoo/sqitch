@@ -44,6 +44,11 @@ Revision history for Perl extension App::Sqitch
      - Added a status messsage to tell the user when the registry is being
        updated, rather than just show each individual update. Thanks to Ben
        Hutton for the suggestion (#276).
+     - The verify command now reads `deploy.variables`, and individual
+       `verify.variables override `deploy.variables`, on the assumption that
+       the verify variables in general ought to be the same as the deploy
+       variables. This makes `verify` variable configuration consistent with
+       `revert` variable configuration.
 
 0.9998 2018-10-03T20:53:58Z
      - Fixed an issue where Sqitch would sometimes truncate the registry

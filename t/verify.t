@@ -71,10 +71,10 @@ CONFIG: {
     });
     $mock_config->mock(get_section => sub {
         my ($self, %p) = @_;
-        return $config_vals{ $p{section} };
+        return $config_vals{ $p{section} } || {};
     });
     %config_vals = (
-        'verify.variables' => { foo => 'bar', hi => 21 },
+        'deploy.variables' => { foo => 'bar', hi => 21 },
     );
 
     is_deeply $CLASS->configure($config, {}), {},
@@ -91,6 +91,18 @@ CONFIG: {
 
     isa_ok my $verify = $CLASS->new(sqitch => $sqitch), $CLASS;
     is_deeply $verify->variables, { foo => 'bar', hi => 21 },
+        'Should pick up variables from configuration';
+
+    # Try merging with verify.variables, too.
+    $config_vals{'verify.variables'} = { hi => 42 };
+    is_deeply $CLASS->configure($config, {
+        set  => { yo => 'stellar' },
+    }), {
+        variables     => { foo => 'bar', yo => 'stellar', hi => 42 },
+    }, 'Should have merged --set, verify, verify';
+
+    isa_ok $verify = $CLASS->new(sqitch => $sqitch), $CLASS;
+    is_deeply $verify->variables, { foo => 'bar', hi => 42 },
         'Should pick up variables from configuration';
 }
 
