@@ -76,7 +76,7 @@ $mock_config->mock(get_section => sub {
     return $config_vals{ $p{section} } || {};
 });
 %config_vals = (
-    'deploy.variables' => { foo => 'bar', hi => 21 },
+    'revert.variables' => { foo => 'bar', hi => 21 },
 );
 
 is_deeply $CLASS->configure($config, {}), { no_prompt => 0, prompt_accept => 1 },
@@ -186,7 +186,9 @@ is_deeply { $revert->_collect_vars($target) }, {
 
 %config_vals = ();
 $revert = $CLASS->new( sqitch => $sqitch, no_prompt => 1);
+
 ##############################################################################
+# Test execution.
 # Mock the engine interface.
 my $mock_engine = Test::MockModule->new('App::Sqitch::Engine::sqlite');
 my @args;
