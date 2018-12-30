@@ -5,6 +5,7 @@ use warnings;
 use 5.010;
 use Test::More;
 use App::Sqitch;
+use App::Sqitch::Target;
 use Path::Class qw(dir file);
 use App::Sqitch::X qw(hurl);
 use Locale::TextDomain qw(App-Sqitch);
@@ -32,6 +33,8 @@ can_ok $CLASS, qw(
     execute
     deploy_variables
     revert_variables
+    _collect_deploy_vars
+    _collect_revert_vars
 );
 
 is_deeply [$CLASS->options], [qw(
@@ -59,6 +62,7 @@ my $sqitch = App::Sqitch->new(
 
 my $config = $sqitch->config;
 
+##############################################################################
 # Test configure().
 is_deeply $CLASS->configure($config, {}),
     { no_prompt => 0, verify => 0, mode => 'all', prompt_accept => 1 },
@@ -137,130 +141,107 @@ is_deeply $CLASS->configure($config, {
     prompt_accept    => 1,
     verify           => 0,
     deploy_variables => { foo => 'bar', hi => 'you' },
-    revert_variables => { foo => 'bar', hi => 'you', my => 'yo' },
+    revert_variables => { foo => 'bar', my => 'yo' },
 }, 'set_revert should merge with set_deploy';
 
-CONFIG: {
-    my $mock_config = Test::MockModule->new(ref $config);
-    my %config_vals;
-    $mock_config->mock(get => sub {
-        my ($self, %p) = @_;
-        return $config_vals{ $p{key} };
-    });
-    $mock_config->mock(get_section => sub {
-        my ($self, %p) = @_;
-        return $config_vals{ $p{section} } || {};
-    });
-    %config_vals = (
-        'deploy.variables' => { foo => 'bar', hi => 21 },
-    );
+##############################################################################
+# Mock config for controlled config testing.
+my $mock_config = Test::MockModule->new(ref $config);
+my %config_vals;
+$mock_config->mock(get => sub {
+    my ($self, %p) = @_;
+    return $config_vals{ $p{key} };
+});
+$mock_config->mock(get_section => sub {
+    my ($self, %p) = @_;
+    return $config_vals{ $p{section} } || {};
+});
 
-    is_deeply $CLASS->configure($config, {}),
-        {no_prompt => 0, verify => 0, mode => 'all', prompt_accept => 1},
-        'Should have deploy configuration';
+is_deeply $CLASS->configure($config, {}),
+    {no_prompt => 0, verify => 0, mode => 'all', prompt_accept => 1},
+    'Should have deploy configuration';
 
-    # Try merging.
-    is_deeply $CLASS->configure($config, {
-        onto_target => 'whu',
-        set         => { foo => 'yo', yo => 'stellar' },
-    }), {
-        mode             => 'all',
-        no_prompt        => 0,
-        prompt_accept    => 1,
-        verify           => 0,
-        deploy_variables => { foo => 'yo', yo => 'stellar', hi => 21 },
-        revert_variables => { foo => 'yo', yo => 'stellar', hi => 21 },
-        onto_change      => 'whu',
-    }, 'Should have merged variables';
-    is_deeply +MockOutput->get_warn, [[__x(
-        'Option --{old} has been deprecated; use --{new} instead',
-        old => 'onto-target',
-        new => 'onto-change',
-    )]], 'Should get warning for deprecated --onto-target';
+# Try setting variables.
+is_deeply $CLASS->configure($config, {
+    onto_target => 'whu',
+    set         => { foo => 'yo', yo => 'stellar' },
+}), {
+    mode             => 'all',
+    no_prompt        => 0,
+    prompt_accept    => 1,
+    verify           => 0,
+    deploy_variables => { foo => 'yo', yo => 'stellar' },
+    revert_variables => { foo => 'yo', yo => 'stellar' },
+    onto_change      => 'whu',
+}, 'Should have merged variables';
+is_deeply +MockOutput->get_warn, [[__x(
+    'Option --{old} has been deprecated; use --{new} instead',
+    old => 'onto-target',
+    new => 'onto-change',
+)]], 'Should get warning for deprecated --onto-target';
 
-    # Try merging with rebase.variables, too.
-    $config_vals{'revert.variables'} = { hi => 42 };
-    is_deeply $CLASS->configure($config, {
-        set  => { yo => 'stellar' },
-    }), {
-        mode             => 'all',
-        no_prompt        => 0,
-        prompt_accept    => 1,
-        verify           => 0,
-        deploy_variables => { foo => 'bar', yo => 'stellar', hi => 21 },
-        revert_variables => { foo => 'bar', yo => 'stellar', hi => 42 },
-    }, 'Should have merged --set, deploy, rebase';
+# Make sure we can override mode, prompting, and verify.
+%config_vals = (
+    'revert.no_prompt'     => 1,
+    'revert.prompt_accept' => 0,
+    'deploy.verify'        => 1,
+    'deploy.mode'          => 'tag',
+);
+is_deeply $CLASS->configure($config, {}), {
+    no_prompt     => 1,
+    prompt_accept => 0,
+    verify        => 1,
+    mode          => 'tag',
+}, 'Should have no_prompt true';
 
-    isa_ok my $rebase = $CLASS->new(sqitch => $sqitch), $CLASS;
-    is_deeply $rebase->deploy_variables, { foo => 'bar', hi => 21 },
-        'Should pick up deploy variables from configuration';
+# Rebase option takes precendence
+$config_vals{'rebase.no_prompt'}     = 0;
+$config_vals{'rebase.prompt_accept'} = 1;
+$config_vals{'rebase.verify'}        = 0;
+$config_vals{'rebase.mode'}          = 'change';
+is_deeply $CLASS->configure($config, {}), {
+    no_prompt     => 0,
+    prompt_accept => 1,
+    verify        => 0,
+    mode          => 'change',
+}, 'Should have false no_prompt, verify, and true prompt_accept from rebase config';
 
-    is_deeply $rebase->revert_variables, { foo => 'bar', hi => 42 },
-        'Should pick up revert variables from configuration';
-
-    # Make sure we can override mode, prompting, and verify.
-    %config_vals = (
-        'revert.no_prompt'     => 1,
-        'revert.prompt_accept' => 0,
-        'deploy.verify'        => 1,
-        'deploy.mode'          => 'tag',
-    );
-    is_deeply $CLASS->configure($config, {}), {
-        no_prompt     => 1,
-        prompt_accept => 0,
-        verify        => 1,
-        mode          => 'tag',
-    }, 'Should have no_prompt true';
-
-    # Rebase option takes precendence
-    $config_vals{'rebase.no_prompt'}     = 0;
-    $config_vals{'rebase.prompt_accept'} = 1;
-    $config_vals{'rebase.verify'}        = 0;
-    $config_vals{'rebase.mode'}          = 'change';
-    is_deeply $CLASS->configure($config, {}), {
-        no_prompt     => 0,
-        prompt_accept => 1,
-        verify        => 0,
-        mode          => 'change',
-    }, 'Should have false no_prompt, verify, and true prompt_accept from rebase config';
-
-    delete $config_vals{'revert.no_prompt'};
-    delete $config_vals{'revert.prompt_accept'};
-    delete $config_vals{'rebase.verify'};
-    delete $config_vals{'rebase.mode'};
-    $config_vals{'rebase.no_prompt'} = 1;
-    $config_vals{'rebase.prompt_accept'} = 0;
-    is_deeply $CLASS->configure($config, {}), {
-        no_prompt     => 1,
-        prompt_accept => 0,
-        verify        => 1,
-        mode          => 'tag',
-    }, 'Should have true no_prompt, verify, and false prompt_accept from rebase from deploy';
+delete $config_vals{'revert.no_prompt'};
+delete $config_vals{'revert.prompt_accept'};
+delete $config_vals{'rebase.verify'};
+delete $config_vals{'rebase.mode'};
+$config_vals{'rebase.no_prompt'} = 1;
+$config_vals{'rebase.prompt_accept'} = 0;
+is_deeply $CLASS->configure($config, {}), {
+    no_prompt     => 1,
+    prompt_accept => 0,
+    verify        => 1,
+    mode          => 'tag',
+}, 'Should have true no_prompt, verify, and false prompt_accept from rebase from deploy';
 
 
-    # But option should override.
-    is_deeply $CLASS->configure($config, {y => 0, verify => 0, mode => 'all'}),
-        { no_prompt => 0, verify => 0, mode => 'all', prompt_accept => 0 },
-        'Should have no_prompt, prompt_accept false and mode all again';
+# But option should override.
+is_deeply $CLASS->configure($config, {y => 0, verify => 0, mode => 'all'}),
+    { no_prompt => 0, verify => 0, mode => 'all', prompt_accept => 0 },
+    'Should have no_prompt, prompt_accept false and mode all again';
 
-    $config_vals{'revert.no_prompt'} = 0;
-    $config_vals{'revert.prompt_accept'} = 1;
-    delete $config_vals{'rebase.no_prompt'};
-    delete $config_vals{'rebase.prompt_accept'};
-    is_deeply $CLASS->configure($config, {}), {
-        no_prompt     => 0,
-        prompt_accept => 1,
-        verify        => 1,
-        mode          => 'tag',
-    }, 'Should have no_prompt false and prompt_accept true for revert config';
+$config_vals{'revert.no_prompt'} = 0;
+$config_vals{'revert.prompt_accept'} = 1;
+delete $config_vals{'rebase.no_prompt'};
+delete $config_vals{'rebase.prompt_accept'};
+is_deeply $CLASS->configure($config, {}), {
+    no_prompt     => 0,
+    prompt_accept => 1,
+    verify        => 1,
+    mode          => 'tag',
+}, 'Should have no_prompt false and prompt_accept true for revert config';
 
-    is_deeply $CLASS->configure($config, {y => 1}), {
-        no_prompt     => 1,
-        prompt_accept => 1,
-        verify        => 1,
-        mode          => 'tag',
-    }, 'Should have no_prompt true with -y';
-}
+is_deeply $CLASS->configure($config, {y => 1}), {
+    no_prompt     => 1,
+    prompt_accept => 1,
+    verify        => 1,
+    mode          => 'tag',
+}, 'Should have no_prompt true with -y';
 
 ##############################################################################
 # Test accessors.
@@ -284,8 +265,186 @@ $mock_engine->mock(revert => sub { shift; @rev_args = @_ });
 my @vars;
 $mock_engine->mock(set_variables => sub { shift; push @vars => [@_] });
 
+##############################################################################
+# Test _collect_deploy_vars and _collect_revert_vars.
+%config_vals = ();
+my $target = App::Sqitch::Target->new(sqitch => $sqitch);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {},
+    'Should collect no variables for deploy';
+is_deeply { $rebase->_collect_revert_vars($target) }, {},
+    'Should collect no variables for revert';
+
+# Add core variables.
+$config_vals{'core.variables'} = { prefix => 'widget', priv => 'SELECT' };
+$target = App::Sqitch::Target->new(sqitch => $sqitch);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'SELECT',
+}, 'Should collect core deploy vars for deploy';
+is_deeply { $rebase->_collect_revert_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'SELECT',
+}, 'Should collect core revert vars for revert';
+
+# Add deploy variables.
+$config_vals{'deploy.variables'} = { dance => 'salsa', priv => 'UPDATE' };
+$target = App::Sqitch::Target->new(sqitch => $sqitch);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UPDATE',
+    dance  => 'salsa',
+}, 'Should override core vars with deploy vars for deploy';
+
+is_deeply { $rebase->_collect_revert_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UPDATE',
+    dance  => 'salsa',
+}, 'Should override core vars with deploy vars for revert';
+
+# Add revert variables.
+$config_vals{'revert.variables'} = { dance => 'disco', lunch => 'pizza' };
+$target = App::Sqitch::Target->new(sqitch => $sqitch);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UPDATE',
+    dance  => 'salsa',
+}, 'Deploy vars should be unaffected by revert vars';
+is_deeply { $rebase->_collect_revert_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UPDATE',
+    dance  => 'disco',
+    lunch  => 'pizza',
+}, 'Should override deploy vars with revert vars for revert';
+
+# Add engine variables.
+$config_vals{'engine.pg.variables'} = { lunch => 'burrito', drink => 'whiskey', priv => 'UP' };
+my $uri = URI::db->new('db:pg:');
+$target = App::Sqitch::Target->new(sqitch => $sqitch, uri => $uri);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'salsa',
+    lunch  => 'burrito',
+    drink  => 'whiskey',
+}, 'Should override deploy vars with engine vars for deploy';
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'salsa',
+    lunch  => 'burrito',
+    drink  => 'whiskey',
+}, 'Should override rebase vars with engine vars for revert';
+
+# Add target variables.
+$config_vals{'target.foo.variables'} = { drink => 'scotch', status => 'winning' };
+$target = App::Sqitch::Target->new(sqitch => $sqitch, name => 'foo', uri => $uri);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'salsa',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'winning',
+}, 'Should override engine vars with deploy vars for deploy';
+is_deeply { $rebase->_collect_revert_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'disco',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'winning',
+}, 'Should override engine vars with target vars for revert';
+
+# Add --set variables.
+my %opts = (
+    set => { status => 'tired', herb => 'oregano' },
+);
+$rebase = $CLASS->new(
+    sqitch => $sqitch,
+    %{ $CLASS->configure($config, { %opts }) },
+);
+$target = App::Sqitch::Target->new(sqitch => $sqitch, name => 'foo', uri => $uri);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'salsa',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'tired',
+    herb   => 'oregano',
+}, 'Should override target vars with --set vars for deploy';
+is_deeply { $rebase->_collect_revert_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'disco',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'tired',
+    herb   => 'oregano',
+}, 'Should override target vars with --set variables for revert';
+
+# Add --set-deploy-vars
+$opts{set_deploy} = { herb => 'basil', color => 'black' };
+$rebase = $CLASS->new(
+    sqitch => $sqitch,
+    %{ $CLASS->configure($config, { %opts }) },
+);
+$target = App::Sqitch::Target->new(sqitch => $sqitch, name => 'foo', uri => $uri);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'salsa',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'tired',
+    herb   => 'basil',
+    color  => 'black',
+}, 'Should override --set vars with --set-deploy variables for deploy';
+is_deeply { $rebase->_collect_revert_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'disco',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'tired',
+    herb   => 'oregano',
+}, 'Should not override --set vars with --set-deploy variables for revert';
+
+# Add --set-revert-vars
+$opts{set_revert} = { herb => 'garlic', color => 'red' };
+$rebase = $CLASS->new(
+    sqitch => $sqitch,
+    %{ $CLASS->configure($config, { %opts }) },
+);
+$target = App::Sqitch::Target->new(sqitch => $sqitch, name => 'foo', uri => $uri);
+is_deeply { $rebase->_collect_deploy_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'salsa',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'tired',
+    herb   => 'basil',
+    color  => 'black',
+}, 'Should not override --set vars with --set-revert variables for deploy';
+is_deeply { $rebase->_collect_revert_vars($target) }, {
+    prefix => 'widget',
+    priv   => 'UP',
+    dance  => 'disco',
+    lunch  => 'burrito',
+    drink  => 'scotch',
+    status => 'tired',
+    herb   => 'garlic',
+    color  => 'red',
+}, 'Should override --set vars with --set-revert variables for revert';
+
+%config_vals = ();
+$rebase = $CLASS->new( sqitch => $sqitch);
+
+##############################################################################
+# Test execute().
 my $mock_cmd = Test::MockModule->new($CLASS);
-my ($target, $orig_method);
+my $orig_method;
 $mock_cmd->mock(parse_args => sub {
     my @ret = shift->$orig_method(@_);
     $target = $ret[0][0];
@@ -296,6 +455,8 @@ $orig_method = $mock_cmd->original('parse_args');
 ok $rebase->execute('@alpha'), 'Execute to "@alpha"';
 is_deeply \@dep_args, [undef, 'all'],
     'undef, and "all" should be passed to the engine deploy';
+is_deeply \@vars, [[], []],
+    'No vars should have been passed through to the engine';
 is_deeply \@rev_args, ['@alpha'],
     '"@alpha" should be passed to the engine revert';
 ok !$target->engine->no_prompt, 'Engine should prompt';
@@ -303,47 +464,56 @@ ok !$target->engine->log_only, 'Engine should no be log only';
 is_deeply +MockOutput->get_warn, [], 'Should have no warnings';
 
 # Pass a target.
+@vars = ();
 ok $rebase->execute('db:sqlite:yow'), 'Execute with target';
 is_deeply \@dep_args, [undef, 'all'],
     'undef, and "all" should be passed to the engine deploy';
 is_deeply \@rev_args, [undef],
     'undef should be passed to the engine revert';
+is_deeply \@vars, [[], []],
+    'No vars should have been passed through to the engine';
 ok !$target->engine->no_prompt, 'Engine should prompt';
 ok !$target->engine->log_only, 'Engine should no be log only';
 is $target->name, 'db:sqlite:yow', 'The target name should be as passed';
 is_deeply +MockOutput->get_warn, [], 'Should have no warnings';
 
 # Pass both.
+@vars = ();
 ok $rebase->execute('db:sqlite:yow', 'widgets'), 'Execute with onto and target';
 is_deeply \@dep_args, [undef, 'all'],
     'undef, and "all" should be passed to the engine deploy';
 is_deeply \@rev_args, ['widgets'],
     '"widgets" should be passed to the engine revert';
+is_deeply \@vars, [[], []],
+    'No vars should have been passed through to the engine';
 ok !$target->engine->no_prompt, 'Engine should prompt';
 ok !$target->engine->log_only, 'Engine should no be log only';
 is $target->name, 'db:sqlite:yow', 'The target name should be as passed';
 is_deeply +MockOutput->get_warn, [], 'Should have no warnings';
 
 # Pass all three!
+@vars = ();
 ok $rebase->execute('db:sqlite:yow', 'roles', 'widgets'),
     'Execute with three args';
 is_deeply \@dep_args, ['widgets', 'all'],
     '"widgets", and "all" should be passed to the engine deploy';
 is_deeply \@rev_args, ['roles'],
     '"roles" should be passed to the engine revert';
+is_deeply \@vars, [[], []],
+    'No vars should have been passed through to the engine';
 ok !$target->engine->no_prompt, 'Engine should prompt';
 ok !$target->engine->log_only, 'Engine should no be log only';
 is $target->name, 'db:sqlite:yow', 'The target name should be as passed';
 is_deeply +MockOutput->get_warn, [], 'Should have no warnings';
 
 # Pass no args.
-@dep_args = @rev_args = ();
+@vars = @dep_args = @rev_args = ();
 ok $rebase->execute, 'Execute';
 is_deeply \@dep_args, [undef, 'all'],
     'undef and "all" should be passed to the engine deploy';
 is_deeply \@rev_args, [undef],
     'undef and = should be passed to the engine revert';
-is_deeply \@vars, [],
+is_deeply \@vars, [[], []],
     'No vars should have been passed through to the engine';
 is_deeply +MockOutput->get_warn, [], 'Should have no warnings';
 
@@ -361,7 +531,7 @@ isa_ok $rebase = $CLASS->new(
     revert_variables => { hey => 'there' },
 ), $CLASS, 'Object with to and variables';
 
-@dep_args = @rev_args = ();
+@vars = @dep_args = @rev_args = ();
 ok $rebase->execute, 'Execute again';
 is $target->name, 'db:sqlite:lolwut', 'Target name should be from option';
 ok $target->engine->no_prompt, 'Engine should be no_prompt';

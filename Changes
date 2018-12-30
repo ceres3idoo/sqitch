@@ -49,6 +49,10 @@ Revision history for Perl extension App::Sqitch
        the verify variables in general ought to be the same as the deploy
        variables. This makes `verify` variable configuration consistent with
        `revert` variable configuration.
+     - Variables set via the `--set-deploy` option on the `rebase` and
+       `checkout` no longer apply to both reverts and deploys, but only
+       deploys. Use the `--set` option to apply a variable to both reverts and
+       deploys.
 
 0.9998 2018-10-03T20:53:58Z
      - Fixed an issue where Sqitch would sometimes truncate the registry
