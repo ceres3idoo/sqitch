@@ -335,14 +335,7 @@ my $err = try {
 
 my $uri = URI::db->new("db:firebird://$user:$pass\@localhost/$dbpath");
 DBIEngineTest->run(
-    class         => $CLASS,
-    sqitch_params => [
-        config  => TestConfig->new('core.engine' => 'exasol'),
-        options => {
-            top_dir     => Path::Class::dir(qw(t engine))->stringify,
-            plan_file   => Path::Class::file(qw(t engine sqitch.plan))->stringify,
-        },
-    ],
+    class             => $CLASS,
     target_params     => [ uri => $uri, registry => catfile($tmpdir, '__metasqitch') ],
     alt_target_params => [ uri => $uri, registry => catfile($tmpdir, '__sqitchtest') ],
 

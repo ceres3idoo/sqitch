@@ -462,14 +462,7 @@ my $err = try {
 };
 
 DBIEngineTest->run(
-    class         => $CLASS,
-    sqitch_params => [
-        config => TestConfig->new('core.engine' => 'mysql'),
-        options => {
-            top_dir     => Path::Class::dir(qw(t engine))->stringify,
-            plan_file   => Path::Class::file(qw(t engine sqitch.plan))->stringify,
-        },
-    ],
+    class             => $CLASS,
     target_params     => [
         registry => $reg1,
         uri => URI::db->new("db:mysql://root@/$db"),

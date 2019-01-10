@@ -328,13 +328,6 @@ END {
 
 DBIEngineTest->run(
     class         => $CLASS,
-    sqitch_params => [
-        config  => TestConfig->new('core.engine' => 'sqlite'),
-        options => {
-            top_dir   => Path::Class::dir(qw(t engine))->stringify,
-            plan_file => Path::Class::file(qw(t engine sqitch.plan))->stringify,
-        },
-    ],
     target_params => [ uri => URI->new("db:sqlite:$db_name") ],
     alt_target_params => [
         registry => 'sqitchtest',

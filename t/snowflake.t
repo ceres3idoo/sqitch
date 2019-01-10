@@ -533,14 +533,7 @@ my $err = try {
 };
 
 DBIEngineTest->run(
-    class         => $CLASS,
-    sqitch_params => [
-        config => TestConfig->new('core.engine' => 'pg'),
-        options => {
-            top_dir   => dir(qw(t engine)),
-            plan_file => file(qw(t engine sqitch.plan)),
-        },
-    ],
+    class             => $CLASS,
     target_params     => [ uri => $uri ],
     alt_target_params => [ uri => $uri, registry => '__sqitchtest' ],
     skip_unless       => sub {

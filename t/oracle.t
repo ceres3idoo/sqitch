@@ -546,14 +546,7 @@ $uri->user($user);
 $uri->password($pass);
 # $uri->dbname( $ENV{TWO_TASK} || $ENV{LOCAL} || $ENV{ORACLE_SID} );
 DBIEngineTest->run(
-    class         => $CLASS,
-    sqitch_params => [
-        config => TestConfig->new('core.engine' => 'oracle'),
-        options => {
-            top_dir   => Path::Class::dir(qw(t engine)),
-            plan_file => Path::Class::file(qw(t engine sqitch.plan)),
-        },
-    ],
+    class             => $CLASS,
     target_params     => [ uri => $uri ],
     alt_target_params => [ uri => $uri, registry => 'oe' ],
     skip_unless       => sub {
