@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $PGVERSION = '' ]; then
+if [ $PGVERSION = 'system' ]; then
     exit
 fi
 
