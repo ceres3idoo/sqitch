@@ -1,6 +1,5 @@
 language: perl
-services:
-  - docker
+services: docker
 perl:
   - "5.28"
   - "5.26"
@@ -13,7 +12,7 @@ perl:
   # - "5.12"
   # - "5.10"
   # - "dev"
-env: PGVERSION=system
+
 matrix:
   include:
     - perl: "5.28"
