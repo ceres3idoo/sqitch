@@ -3,7 +3,8 @@ services: docker
 perl:
   - "5.28"
   - "5.26"
-env: PGVERSION=system
+env:
+  global: PGVERSION=system
 matrix:
   include:
     - env: PGVERSION=11
