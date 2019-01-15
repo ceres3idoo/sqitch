@@ -16,7 +16,7 @@ perl:
 env: PGVERSION=system
 matrix:
   include:
-    perl: "5.28"
+    - perl: "5.28"
       env:
       - PGVERSION=11
       - PGVERSION=10
