@@ -1,18 +1,37 @@
 language: perl
-perl:
-  - "5.28"
-  - "5.26"
-  - "5.24"
-  - "5.22"
-  - "5.20"
-  - "5.18"
-  - "5.16"
-  - "5.14"
-  - "5.12"
-  - "5.10"
 services:
   - docker
+perl:
+  - "5.28"
+  # - "5.26"
+  # - "5.24"
+  # - "5.22"
+  # - "5.20"
+  # - "5.18"
+  # - "5.16"
+  # - "5.14"
+  # - "5.12"
+  # - "5.10"
+  # - "dev"
+env:
+  - PGVERSION=system
+matrix:
+  include:
+  - "5.28"
+    env:
+    - PGVERSION=11
+    # - PGVERSION=10
+    # - PGVERSION=9.6
+    # - PGVERSION=9.5
+    # - PGVERSION=9.4
+    # - PGVERSION=9.3
+    # - PGVERSION=9.2
+    # - PGVERSION=9.1
+    # - PGVERSION=9.0
+    # - PGVERSION=8.4
+
 before_install:
+  - source dev/linux-postgres
   - source dev/linux-prereqs
 install:
   - cpan-install --deps
