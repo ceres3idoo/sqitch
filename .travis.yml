@@ -1,5 +1,4 @@
 language: perl
-services: docker
 perl:
   - "5.28"
   - "5.26"
@@ -14,18 +13,18 @@ jobs:
   include:
     - &postgres
       stage: 🐘 Postgres
-      env: PGVERSION=11
+      addons: {postgresql: "11"}
       before_install:
-        - source dev/linux-postgres
         - source dev/linux-prereqs
       install:
         - cpan-install --deps
       script:
-        - prove -lr --directives --comments t/pg.t
+        - prove -v -lr --directives --comments t/pg.t
     - <<: *postgres
-      env: PGVERSION=10
+      addons: {postgresql: "10"}
 
-    - stage: Coverage
+    - stage: 📈 Coverage
+      services: docker
       env: COVERAGE=1
       before_install:
         - source dev/linux-vertica
@@ -42,7 +41,7 @@ jobs:
       after_success:
         - coverage-report
 
-    - stage: Windows
+    - stage: 🍓 Windows
       os: windows
       language: shell
       before_install:
