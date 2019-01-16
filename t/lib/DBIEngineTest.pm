@@ -85,7 +85,9 @@ sub run {
                 );
             };
         }
-
+        if (my $q = $p{version_query}) {
+            diag 'Connected to ', $engine->dbh->selectcol_arrayref($q)->[0];
+        }
         ok $engine, 'Engine instantiated';
 
         ok !$engine->initialized, 'Database should not yet be initialized';

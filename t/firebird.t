@@ -360,6 +360,7 @@ my $err = try {
 my $uri = URI::db->new("db:firebird://$user:$pass\@localhost/$dbpath");
 DBIEngineTest->run(
     class         => $CLASS,
+    version_query => q{SELECT rdb$get_context('SYSTEM', 'ENGINE_VERSION') from rdb$database},
     sqitch_params => [
         config  => TestConfig->new('core.engine' => 'exasol'),
         options => {
