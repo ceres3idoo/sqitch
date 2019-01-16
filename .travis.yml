@@ -2,6 +2,14 @@ language: perl
 perl:
   - "5.28"
   - "5.26"
+  # - "5.24"
+  # - "5.22"
+  # - "5.20"
+  # - "5.18"
+  # - "5.16"
+  # - "5.14"
+  # - "5.12"
+  # - "5.10"
 before_install:
   - source dev/linux-prereqs
 install:
@@ -13,15 +21,30 @@ jobs:
   include:
     - &postgres
       stage: 🐘 Postgres
-      addons: {postgresql: "11"}
+      env: PGVERSION=11
       before_install:
+        - source dev/linux-postgres
         - source dev/linux-prereqs
-      install:
-        - cpan-install --deps
       script:
         - prove -v -lr --directives --comments t/pg.t
     - <<: *postgres
-      addons: {postgresql: "10"}
+      env: PGVERSION=10
+    # - <<: *postgres
+    #   env: PGVERSION=9.6
+    # - <<: *postgres
+    #   env: PGVERSION=9.5
+    # - <<: *postgres
+    #   env: PGVERSION=9.4
+    # - <<: *postgres
+    #   env: PGVERSION=9.3
+    # - <<: *postgres
+    #   env: PGVERSION=9.2
+    # - <<: *postgres
+    #   env: PGVERSION=9.1
+    # - <<: *postgres
+    #   env: PGVERSION=9.0
+    # - <<: *postgres
+    #   env: PGVERSION=8.4
 
     - stage: 📈 Coverage
       services: docker
