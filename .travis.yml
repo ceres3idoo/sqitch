@@ -20,7 +20,7 @@ script:
 
 jobs:
   include:
-    - &postgres
+    -
       stage: 🐘 Postgres
       env: PGVERSION=11
       before_install:
@@ -28,7 +28,7 @@ jobs:
         - source dev/linux-prereqs
       script:
         - prove -v -lr --directives --comments t/pg.t
-    - <<: *postgres
+    -
       env: PGVERSION=10
     # - <<: *postgres
     #   env: PGVERSION=9.6
