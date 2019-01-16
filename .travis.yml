@@ -20,33 +20,6 @@ script:
 
 jobs:
   include:
-    - &postgres
-      stage: 🐘 Postgres
-      env: PGVERSION=11
-      before_install:
-        - source dev/linux-postgres
-        - source dev/linux-prereqs
-      script:
-        - prove -v -lr --directives --comments t/pg.t
-    - <<: *postgres
-      env: PGVERSION=10
-    - <<: *postgres
-      env: PGVERSION=9.6
-    - <<: *postgres
-      env: PGVERSION=9.5
-    - <<: *postgres
-      env: PGVERSION=9.4
-    - <<: *postgres
-      env: PGVERSION=9.3
-    - <<: *postgres
-      env: PGVERSION=9.2
-    - <<: *postgres
-      env: PGVERSION=9.1
-    - <<: *postgres
-      env: PGVERSION=9.0
-    - <<: *postgres
-      env: PGVERSION=8.4
-
     - stage: 📈 Coverage
       services: docker
       env: COVERAGE=1
@@ -78,3 +51,30 @@ jobs:
       script:
         # No prove: https://rt.cpan.org/Public/Bug/Display.html?id=128221
         - ./dev/prove -lr t
+
+    - &postgres
+      stage: 🐘 Postgres
+      env: PGVERSION=11
+      before_install:
+        - source dev/linux-postgres
+        - source dev/linux-prereqs
+      script:
+        - prove -v -lr --directives --comments t/pg.t
+    - <<: *postgres
+      env: PGVERSION=10
+    - <<: *postgres
+      env: PGVERSION=9.6
+    - <<: *postgres
+      env: PGVERSION=9.5
+    - <<: *postgres
+      env: PGVERSION=9.4
+    - <<: *postgres
+      env: PGVERSION=9.3
+    - <<: *postgres
+      env: PGVERSION=9.2
+    - <<: *postgres
+      env: PGVERSION=9.1
+    - <<: *postgres
+      env: PGVERSION=9.0
+    - <<: *postgres
+      env: PGVERSION=8.4
