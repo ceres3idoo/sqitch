@@ -21,3 +21,4 @@ sudo apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-co
 
 sudo pg_createcluster --start $PGVERSION test -p 55435 -- -A trust
 export PG_CONFIG=/usr/lib/postgresql/$PGVERSION/bin/pg_config
+export PGPORT=55435
