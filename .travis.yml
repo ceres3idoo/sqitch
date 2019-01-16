@@ -20,7 +20,22 @@ script:
 
 jobs:
   include:
+    - stage: 🍓 Windows
+      os: windows
+      language: shell
+      before_install:
+        - cinst -y strawberryperl
+        - export "PATH=/c/Strawberry/perl/site/bin:/c/Strawberry/perl/bin:/c/Strawberry/c/bin:$PATH"
+      install:
+        # Can't use dzil to make a dist on windows, so depend on the previous
+        # release for dependencies.
+        - cpanm --no-interactive --no-man-pages --notest --installdeps App::Sqitch
+      script:
+        # No prove: https://rt.cpan.org/Public/Bug/Display.html?id=128221
+        - ./dev/prove -lr t
+
     - stage: 📈 Coverage
+      if: branch = master
       services: docker
       env: COVERAGE=1
       before_install:
@@ -39,21 +54,8 @@ jobs:
       after_success:
         - coverage-report
 
-    - stage: 🍓 Windows
-      os: windows
-      language: shell
-      before_install:
-        - cinst -y strawberryperl
-        - export "PATH=/c/Strawberry/perl/site/bin:/c/Strawberry/perl/bin:/c/Strawberry/c/bin:$PATH"
-      install:
-        # Can't use dzil to make a dist on windows, so depend on the previous
-        # release for dependencies.
-        - cpanm --no-interactive --no-man-pages --notest --installdeps App::Sqitch
-      script:
-        # No prove: https://rt.cpan.org/Public/Bug/Display.html?id=128221
-        - ./dev/prove -lr t
-
     - &postgres
+      if: branch = master
       stage: 🐘 Postgres
       env: PGVERSION=11
       before_install:
