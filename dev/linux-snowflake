@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 # Set up Snowflake.
 sudo apt-get update -qq

@@ -145,20 +145,20 @@ jobs:
     # - <<: *exasol
     #   env: EXASOL=6.0.12-d1
 
-    # https://hub.docker.com/r/jacobalberty/firebird/tags
-    - &firebird
-      stage: 🔥 Firebird
-      # if: branch = master
-      env: FIREBIRD=3.0
-      before_install:
-        - source dev/linux-firebird
-        - source dev/linux-prereqs
-      script:
-        - LIVE_FIREBIRD_REQUIRED=1 prove -lr --directives --comments t/firebird.t
-    - <<: *firebird
-      env: FIREBIRD=2.5-ss
-    - <<: *firebird
-      env: FIREBIRD=2.5-sc
+    # # https://hub.docker.com/r/jacobalberty/firebird/tags
+    # - &firebird
+    #   stage: 🔥 Firebird
+    #   # if: branch = master
+    #   env: FIREBIRD=3.0
+    #   before_install:
+    #     - source dev/linux-firebird
+    #     - source dev/linux-prereqs
+    #   script:
+    #     - LIVE_FIREBIRD_REQUIRED=1 prove -lr --directives --comments t/firebird.t
+    # - <<: *firebird
+    #   env: FIREBIRD=2.5-ss
+    # - <<: *firebird
+    #   env: FIREBIRD=2.5-sc
 
     - stage: ❄️ Snowflake
       # if: branch = master
