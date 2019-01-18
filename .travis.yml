@@ -2,7 +2,7 @@ language: perl
 stage: 🐪 Perl
 perl:
   - "5.28"
-  - "5.26"
+  # - "5.26"
   # - "5.24"
   # - "5.22"
   # - "5.20"
@@ -159,3 +159,24 @@ jobs:
       env: FIREBIRD=2.5-ss
     - <<: *firebird
       env: FIREBIRD=2.5-sc
+
+    - &snowflake
+      stage: ❄️ Snowflake
+      if: branch = master
+      before_install:
+        # - source dev/linux-snowflake
+        - source dev/linux-prereqs
+      script:
+        - LIVE_SNOWFLAKE_REQUIRED=1 prove -lr --directives --comments t/snowflake.t
+
+    - &oracle
+      stage: 🔮 Oracle
+      if: branch = master
+      env: ORACLE=18c
+      before_install:
+        # - source dev/linux-oracle
+        - source dev/linux-prereqs
+      script:
+        - LIVE_ORACLE_REQUIRED=1 prove -lr --directives --comments t/oracle.t
+
+  allow_failures: [🔮 Oracle, ❄️ Snowflake]
