@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 # Set up Snowflake.
 sudo apt-get update -qq
@@ -8,7 +8,7 @@ sudo apt-get install -qq unixodbc-dev odbcinst unixodbc
 
 # Install snowsql.
 curl -o snowsql.bash http://sfc-snowsql-updates.s3.us-west-2.amazonaws.com/bootstrap/1.1/linux_x86_64/snowsql-1.1.72-linux_x86_64.bash
-sed -e '1,/^exit$/d' snowsql.bash | tar zxf - \
+sed -e '1,/^exit$/d' snowsql.bash | tar zxf -
 mv snowsql /bin/
 
 # TODO: Install Snowflake ODBC driver and config.

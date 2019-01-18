@@ -162,7 +162,6 @@ jobs:
 
     - stage: ❄️ Snowflake
       # if: branch = master
-      env: ORACLE=18c
       before_install:
         - source dev/linux-snowflake
         - source dev/linux-prereqs
