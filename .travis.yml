@@ -20,7 +20,8 @@ script:
 
 jobs:
   include:
-    - &firebird
+    # https://hub.docker.com/r/jacobalberty/firebird/tags
+    - 
       stage: 🔥 Firebird
       if: branch = master
       env: FIREBIRD=3.0
@@ -29,10 +30,6 @@ jobs:
         - source dev/linux-prereqs
       script:
         - LIVE_FIREBIRD_REQUIRED=1 prove -lr --directives --comments t/firebird.t
-    - <<: *firebird
-      env: FIREBIRD=2.5-ss
-    - <<: *firebird
-      env: FIREBIRD=2.5-sc
 
     # - stage: 🍓 Windows
     #   os: windows
