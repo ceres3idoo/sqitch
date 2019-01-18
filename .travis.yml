@@ -181,6 +181,6 @@ jobs:
 
   fast_finish: true
   allow_failures:
-    - env: FIREBIRD=2.5-ss
+    - env: FIREBIRD=2.5-ss # https://github.com/jacobalberty/firebird-docker/issues/33
     - stage: ❄️ Snowflake
     - stage: 🔮 Oracle
