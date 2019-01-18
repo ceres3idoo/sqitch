@@ -2,7 +2,7 @@ language: perl
 stage: 🐪 Perl
 perl:
   - "5.28"
-  # - "5.26"
+  - "5.26"
   # - "5.24"
   # - "5.22"
   # - "5.20"
@@ -35,7 +35,7 @@ jobs:
     - <<: *firebird
       env: FIREBIRD=2.5-sc
 
-      # - stage: 🍓 Windows
+    # - stage: 🍓 Windows
     #   os: windows
     #   language: shell
     #   before_install:
@@ -97,6 +97,8 @@ jobs:
     # - <<: *postgres
     #   env: POSTGRES=8.4
 
+    # # https://hub.docker.com/_/mysql
+    # # https://hub.docker.com/_/mariadb
     # - &mysql
     #   stage: 🐬 MySQL
     #   if: branch = master
