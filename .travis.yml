@@ -2,15 +2,15 @@ language: perl
 stage: 🐪 Perl
 perl:
   - "5.28"
-  - "5.26"
-  - "5.24"
-  - "5.22"
-  - "5.20"
-  - "5.18"
-  - "5.16"
-  - "5.14"
-  - "5.12"
-  - "5.10"
+  # - "5.26"
+  # - "5.24"
+  # - "5.22"
+  # - "5.20"
+  # - "5.18"
+  # - "5.16"
+  # - "5.14"
+  # - "5.12"
+  # - "5.10"
 before_install:
   - source dev/linux-prereqs
 install:
@@ -20,123 +20,137 @@ script:
 
 jobs:
   include:
-    - stage: 🍓 Windows
-      os: windows
-      language: shell
-      before_install:
-        - cinst -y strawberryperl
-        - export "PATH=/c/Strawberry/perl/site/bin:/c/Strawberry/perl/bin:/c/Strawberry/c/bin:$PATH"
-      install:
-        # Can't use dzil to make a dist on windows, so depend on the previous
-        # release for dependencies.
-        - cpanm --no-interactive --no-man-pages --notest --installdeps App::Sqitch
-      script:
-        # No prove: https://rt.cpan.org/Public/Bug/Display.html?id=128221
-        - ./dev/prove -lr t
+    # - stage: 🍓 Windows
+    #   os: windows
+    #   language: shell
+    #   before_install:
+    #     - cinst -y strawberryperl
+    #     - export "PATH=/c/Strawberry/perl/site/bin:/c/Strawberry/perl/bin:/c/Strawberry/c/bin:$PATH"
+    #   install:
+    #     # Can't use dzil to make a dist on windows, so depend on the previous
+    #     # release for dependencies.
+    #     - cpanm --no-interactive --no-man-pages --notest --installdeps App::Sqitch
+    #   script:
+    #     # No prove: https://rt.cpan.org/Public/Bug/Display.html?id=128221
+    #     - ./dev/prove -lr t
 
-    - stage: 📈 Coverage
+    # - stage: 📈 Coverage
+    #   if: branch = master
+    #   services: docker
+    #   env: COVERAGE=1
+    #   before_install:
+    #     - source dev/linux-vertica
+    #     - source dev/linux-exasol
+    #     - source dev/linux-firebird
+    #     - source dev/linux-prereqs
+    #     - cpan-install --deps
+    #     - cpan-install --coverage
+    #   before_script:
+    #     - coverage-setup
+    #   script:
+    #     - export LIVE_PG_REQUIRED=1 LIVE_MYSQL_REQUIRED=1 LIVE_SQLITE_REQUIRED=1 LIVE_VERTICA_REQUIRED=1 LIVE_EXASOL_REQUIRED=1 LIVE_FIREBIRD_REQUIRED=1
+    #     - prove -lr --directives --comments $(test-dirs)
+    #     # - prove -lv t/sqlite.t t/pg.t t/mysql.t t/vertica.t t/exasol.t t/firebird.t t/oracle.t t/snowflake.t
+    #   after_success:
+    #     - coverage-report
+
+    # - &postgres
+    #   stage: 🐘 Postgres
+    #   if: branch = master
+    #   env: POSTGRES=11
+    #   before_install:
+    #     - source dev/linux-postgres
+    #     - source dev/linux-prereqs
+    #   script:
+    #     - LIVE_PG_REQUIRED=1 prove -lr --directives --comments t/pg.t
+    # - <<: *postgres
+    #   env: POSTGRES=10
+    # - <<: *postgres
+    #   env: POSTGRES=9.6
+    # - <<: *postgres
+    #   env: POSTGRES=9.5
+    # - <<: *postgres
+    #   env: POSTGRES=9.4
+    # - <<: *postgres
+    #   env: POSTGRES=9.3
+    # - <<: *postgres
+    #   env: POSTGRES=9.2
+    # - <<: *postgres
+    #   env: POSTGRES=9.1
+    # - <<: *postgres
+    #   env: POSTGRES=9.0
+    # - <<: *postgres
+    #   env: POSTGRES=8.4
+
+    # - &mysql
+    #   stage: 🐬 MySQL
+    #   if: branch = master
+    #   services: docker
+    #   env: MYSQL=mysql:8.0
+    #   before_install:
+    #     - source dev/linux-mysql
+    #     - source dev/linux-prereqs
+    #   script:
+    #     - LIVE_MYSQL_REQUIRED=1 prove -lr --directives --comments t/mysql.t
+    # - <<: *mysql
+    #   env: MYSQL=mysql:5.7
+    # - <<: *mysql
+    #   env: MYSQL=mysql:5.6
+    # - <<: *mysql
+    #   env: MYSQL=mysql:5.5
+    # - <<: *mysql
+    #   env: MYSQL=mariadb:10.4
+    # - <<: *mysql
+    #   env: MYSQL=mariadb:10.3
+    # - <<: *mysql
+    #   env: MYSQL=mariadb:10.2
+    # - <<: *mysql
+    #   env: MYSQL=mariadb:10.1
+    # - <<: *mysql
+    #   env: MYSQL=mariadb:10.0
+    # - <<: *mysql
+    #   env: MYSQL=mariadb:5.5
+
+    # - &vertica
+    #   stage: 🔺 Vertica
+    #   if: branch = master
+    #   env: VERTICA=9.1.1-0
+    #   before_install:
+    #     - source dev/linux-vertica
+    #     - source dev/linux-prereqs
+    #   script:
+    #     - LIVE_VERTICA_REQUIRED=1 prove -lr --directives --comments t/vertica.t
+    # - <<: *vertica
+    #   env: VERTICA=8.1.1-0
+    # - <<: *vertica
+    #   env: VERTICA=8.0.0-0
+    # - <<: *vertica
+    #   env: VERTICA=7.2.3-18
+    # - <<: *vertica
+    #   env: VERTICA=7.1.2-21
+
+    # - &exasol
+    #   stage: ☀️ Exasol
+    #   if: branch = master
+    #   env: EXASOL=6.1.0-d1
+    #   before_install:
+    #     - source dev/linux-exasol
+    #     - source dev/linux-prereqs
+    #   script:
+    #     - LIVE_EXASOL_REQUIRED=1 prove -lr --directives --comments t/exasol.t
+    # - <<: *exasol
+    #   env: EXASOL=6.0.12-d1
+
+    - &firebird
+      stage: 🔥 Firebird
       if: branch = master
-      services: docker
-      env: COVERAGE=1
+      env: FIREBIRD=3.0
       before_install:
-        - source dev/linux-vertica
-        - source dev/linux-exasol
         - source dev/linux-firebird
         - source dev/linux-prereqs
-        - cpan-install --deps
-        - cpan-install --coverage
-      before_script:
-        - coverage-setup
       script:
-        - export LIVE_PG_REQUIRED=1 LIVE_MYSQL_REQUIRED=1 LIVE_SQLITE_REQUIRED=1 LIVE_VERTICA_REQUIRED=1 LIVE_EXASOL_REQUIRED=1 LIVE_FIREBIRD_REQUIRED=1
-        - prove -lr --directives --comments $(test-dirs)
-        # - prove -lv t/sqlite.t t/pg.t t/mysql.t t/vertica.t t/exasol.t t/firebird.t t/oracle.t t/snowflake.t
-      after_success:
-        - coverage-report
-
-    - &postgres
-      stage: 🐘 Postgres
-      if: branch = master
-      env: POSTGRES=11
-      before_install:
-        - source dev/linux-postgres
-        - source dev/linux-prereqs
-      script:
-        - LIVE_PG_REQUIRED=1 prove -lr --directives --comments t/pg.t
-    - <<: *postgres
-      env: POSTGRES=10
-    - <<: *postgres
-      env: POSTGRES=9.6
-    - <<: *postgres
-      env: POSTGRES=9.5
-    - <<: *postgres
-      env: POSTGRES=9.4
-    - <<: *postgres
-      env: POSTGRES=9.3
-    - <<: *postgres
-      env: POSTGRES=9.2
-    - <<: *postgres
-      env: POSTGRES=9.1
-    - <<: *postgres
-      env: POSTGRES=9.0
-    - <<: *postgres
-      env: POSTGRES=8.4
-
-    - &mysql
-      stage: 🐬 MySQL
-      if: branch = master
-      services: docker
-      env: MYSQL=mysql:8.0
-      before_install:
-        - source dev/linux-mysql
-        - source dev/linux-prereqs
-      script:
-        - LIVE_MYSQL_REQUIRED=1 prove -lr --directives --comments t/mysql.t
-    - <<: *mysql
-      env: MYSQL=mysql:5.7
-    - <<: *mysql
-      env: MYSQL=mysql:5.6
-    - <<: *mysql
-      env: MYSQL=mysql:5.5
-    - <<: *mysql
-      env: MYSQL=mariadb:10.4
-    - <<: *mysql
-      env: MYSQL=mariadb:10.3
-    - <<: *mysql
-      env: MYSQL=mariadb:10.2
-    - <<: *mysql
-      env: MYSQL=mariadb:10.1
-    - <<: *mysql
-      env: MYSQL=mariadb:10.0
-    - <<: *mysql
-      env: MYSQL=mariadb:5.5
-
-    - &vertica
-      stage: 🔺 Vertica
-      if: branch = master
-      env: VERTICA=9.1.1-0
-      before_install:
-        - source dev/linux-vertica
-        - source dev/linux-prereqs
-      script:
-        - LIVE_VERTICA_REQUIRED=1 prove -lr --directives --comments t/vertica.t
-    - <<: *vertica
-      env: VERTICA=8.1.1-0
-    - <<: *vertica
-      env: VERTICA=8.0.0-0
-    - <<: *vertica
-      env: VERTICA=7.2.3-18
-    - <<: *vertica
-      env: VERTICA=7.1.2-21
-
-    - &exasol
-      stage: ☀️ Exasol
-      if: branch = master
-      env: EXASOL=6.1.0-d1
-      before_install:
-        - source dev/linux-exasol
-        - source dev/linux-prereqs
-      script:
-        - LIVE_EXASOL_REQUIRED=1 prove -lr --directives --comments t/exasol.t
-    - <<: *exasol
-      env: EXASOL=6.0.12-d1
+        - LIVE_FIREBIRD_REQUIRED=1 prove -lr --directives --comments t/firebird.t
+    - <<: *firebird
+      env: FIREBIRD=2.5-ss
+    - <<: *firebird
+      env: FIREBIRD=2.5-sc
