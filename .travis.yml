@@ -162,6 +162,7 @@ jobs:
 
     - stage: ❄️ Snowflake
       # if: branch = master
+      env: ORACLE=18c
       before_install:
         # - source dev/linux-snowflake
         - source dev/linux-prereqs
@@ -179,4 +180,7 @@ jobs:
         - LIVE_ORACLE_REQUIRED=1 prove -lr --directives --comments t/oracle.t
 
   fast_finish: true
-  allow_failures: [🔮 Oracle, ❄️ Snowflake]
+  allow_failures:
+    - env: FIREBIRD=2.5-ss
+    - stage: ❄️ Snowflake
+    - stage: 🔮 Oracle
