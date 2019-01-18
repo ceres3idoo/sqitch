@@ -2,7 +2,7 @@ language: perl
 stage: 🐪 Perl
 perl:
   - "5.28"
-  # - "5.26"
+  - "5.26"
   # - "5.24"
   # - "5.22"
   # - "5.20"
@@ -20,19 +20,33 @@ script:
 
 jobs:
   include:
-    - stage: 🍓 Windows
-      os: windows
-      language: shell
+    - &firebird
+      stage: 🔥 Firebird
+      if: branch = master
+      env: FIREBIRD=3.0
       before_install:
-        - cinst -y strawberryperl
-        - export "PATH=/c/Strawberry/perl/site/bin:/c/Strawberry/perl/bin:/c/Strawberry/c/bin:$PATH"
-      install:
-        # Can't use dzil to make a dist on windows, so depend on the previous
-        # release for dependencies.
-        - cpanm --no-interactive --no-man-pages --notest --installdeps App::Sqitch
+        - source dev/linux-firebird
+        - source dev/linux-prereqs
       script:
-        # No prove: https://rt.cpan.org/Public/Bug/Display.html?id=128221
-        - ./dev/prove -lr t
+        - LIVE_FIREBIRD_REQUIRED=1 prove -lr --directives --comments t/firebird.t
+    - <<: *firebird
+      env: FIREBIRD=2.5-ss
+    - <<: *firebird
+      env: FIREBIRD=2.5-sc
+
+    # - stage: 🍓 Windows
+    #   os: windows
+    #   language: shell
+    #   before_install:
+    #     - cinst -y strawberryperl
+    #     - export "PATH=/c/Strawberry/perl/site/bin:/c/Strawberry/perl/bin:/c/Strawberry/c/bin:$PATH"
+    #   install:
+    #     # Can't use dzil to make a dist on windows, so depend on the previous
+    #     # release for dependencies.
+    #     - cpanm --no-interactive --no-man-pages --notest --installdeps App::Sqitch
+    #   script:
+    #     # No prove: https://rt.cpan.org/Public/Bug/Display.html?id=128221
+    #     - ./dev/prove -lr t
 
     # - stage: 📈 Coverage
     #   if: branch = master
@@ -144,18 +158,3 @@ jobs:
     #     - LIVE_EXASOL_REQUIRED=1 prove -lr --directives --comments t/exasol.t
     # - <<: *exasol
     #   env: EXASOL=6.0.12-d1
-
-    # https://hub.docker.com/r/jacobalberty/firebird/tags
-    - &firebird
-      stage: 🔥 Firebird
-      if: branch = master
-      env: FIREBIRD=3.0
-      before_install:
-        - source dev/linux-firebird
-        - source dev/linux-prereqs
-      script:
-        - LIVE_FIREBIRD_REQUIRED=1 prove -lr --directives --comments t/firebird.t
-    - <<: *firebird
-      env: FIREBIRD=2.5-ss
-    - <<: *firebird
-      env: FIREBIRD=2.5-sc
