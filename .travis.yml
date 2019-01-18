@@ -160,8 +160,7 @@ jobs:
     - <<: *firebird
       env: FIREBIRD=2.5-sc
 
-    - &snowflake
-      stage: ❄️ Snowflake
+    - stage: ❄️ Snowflake
       # if: branch = master
       before_install:
         # - source dev/linux-snowflake

@@ -2,7 +2,7 @@
 
 set -e
 
-docker run --rm -it -d -e ISC_PASSWORD=nix -e FIREBIRD_DATABASE=sqitchtest.db -p 3050:3050 jacobalberty/firebird:${FIREBIRD:=latest}
+docker run --rm -d -e ISC_PASSWORD=nix -e FIREBIRD_DATABASE=sqitchtest.db -p 3050:3050 --privileged jacobalberty/firebird:${FIREBIRD:=latest}
 sudo apt-get update -qq
 sudo apt-get install -qq firebird-dev
 export FIREBIRD_URI=db:firebird://sysdba:nix@0.0.0.0//firebird/data/sqitchtest.db
